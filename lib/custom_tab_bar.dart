@@ -159,23 +159,7 @@ class _CustomTabBarState extends State<_CustomTabBar>
 
     _init();
 
-    positionNotifier.addListener(() {
-      setState(() {
-        indicatorLeft =
-            positionNotifier.value.left + (widget.indicator?.left ?? 0);
-        indicatorRight =
-            positionNotifier.value.right + (widget.indicator?.right ?? 0);
-
-        indicatorBottom =
-            positionNotifier.value.bottom + (widget.indicator?.bottom ?? 0);
-
-        if (widget.direction == Axis.vertical ||
-            widget.indicator?.top != null) {
-          indicatorTop =
-              positionNotifier.value.top + (widget.indicator?.top ?? 0);
-        }
-      });
-    });
+    positionNotifier.addListener(positionNotifierListener);
 
     Future.delayed(Duration.zero, () {
       progressNotifier?.value = ScrollProgressInfo(currentIndex: _currentIndex);
@@ -185,23 +169,42 @@ class _CustomTabBarState extends State<_CustomTabBar>
       _scrollController = ScrollController();
     }
 
-    widget.pageController.addListener(() {
-      if (_tabBarController.isJumpToTarget) return;
-      if (_currentIndex == getCurrentPage) return;
-      _currentIndex = getCurrentPage.toInt();
+    widget.pageController.addListener(pageControllerListener);
+  }
 
-      _tabBarController.scrollByPageView(_viewportSize / 2, sizeList,
-          _scrollController, widget.pageController);
+  pageControllerListener() async {
+    if (_tabBarController.isJumpToTarget) return;
+    if (_currentIndex == getCurrentPage) return;
+    _currentIndex = getCurrentPage.toInt();
 
-      ScrollProgressInfo? scrollProgressInfo =
-          _tabBarController.calculateScrollProgressByPageView(
-              _currentIndex, widget.pageController);
-      if (scrollProgressInfo != null) {
-        progressNotifier?.value = scrollProgressInfo;
+    _tabBarController.scrollByPageView(
+        _viewportSize / 2, sizeList, _scrollController, widget.pageController);
+
+    ScrollProgressInfo? scrollProgressInfo =
+        _tabBarController.calculateScrollProgressByPageView(
+            _currentIndex, widget.pageController);
+    if (scrollProgressInfo != null) {
+      progressNotifier?.value = scrollProgressInfo;
+    }
+
+    widget.indicator?.updateScrollIndicator(getCurrentPage, sizeList,
+        kCustomerTabBarAnimDuration, positionNotifier);
+  }
+
+  positionNotifierListener() async {
+    setState(() {
+      indicatorLeft =
+          positionNotifier.value.left + (widget.indicator?.left ?? 0);
+      indicatorRight =
+          positionNotifier.value.right + (widget.indicator?.right ?? 0);
+
+      indicatorBottom =
+          positionNotifier.value.bottom + (widget.indicator?.bottom ?? 0);
+
+      if (widget.direction == Axis.vertical || widget.indicator?.top != null) {
+        indicatorTop =
+            positionNotifier.value.top + (widget.indicator?.top ?? 0);
       }
-
-      widget.indicator?.updateScrollIndicator(getCurrentPage, sizeList,
-          kCustomerTabBarAnimDuration, positionNotifier);
     });
   }
 
@@ -211,6 +214,8 @@ class _CustomTabBarState extends State<_CustomTabBar>
   void dispose() {
     super.dispose();
     progressAnimationController?.stop(canceled: true);
+    positionNotifier.removeListener(positionNotifierListener);
+    widget.pageController.removeListener(pageControllerListener);
   }
 
   @override
